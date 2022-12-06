@@ -11,6 +11,8 @@
 # limitations under the License.
 
 import os
+import glob
+from pathlib import Path
 
 try:
     import paramiko
@@ -89,10 +91,18 @@ class ParamikoBackend(base.BaseBackend):
                 new_config_path = os.path.join(
                     os.path.expanduser(ssh_config_dir), value
                 )
-                with open(new_config_path) as f:
-                    new_ssh_config = paramiko.SSHConfig()
-                    new_ssh_config.parse(f)
-                    self._load_ssh_config(client, cfg, new_ssh_config, ssh_config_dir)
+                if value[0] == '/' or value[0] == '~':
+                    new_config_path = value
+                
+                files = glob.glob(new_config_path, recursive=True)
+
+                for file_name in files:
+                    path = Path(file_name)
+                    if path.is_file():
+                        with open(file_name) as f:
+                            new_ssh_config = paramiko.SSHConfig()
+                            new_ssh_config.parse(f)
+                            self._load_ssh_config(client, cfg, new_ssh_config, ssh_config_dir=path.parent.absolute())
 
     @functools.cached_property
     def client(self) -> paramiko.SSHClient:
